@@ -1,0 +1,70 @@
+# 当您更改代码时，此工作流程将构建 Web 应用程序并将其本体放入 Azure 静态 Web 应用程序。
+#
+# 此工作流程假设您已经创建了目标 Azure 静态 Web 应用程序。
+#相关说明，请参考 https://docs.microsoft.com/azure/static-web-apps/get-started-portal?tabs=vanilla-javascript
+#
+# 配置此工作流程：
+#
+# 1. 使用静态 Web 应用程序配置令牌的值在名为 AZURE_STATIC_WEB_APPS_API_TOKEN 的存储库中设置一个机密。
+#有关获取Token的说明，请参见：https://docs.microsoft.com/azure/static-web-apps/deployment-token-management
+#
+# 3.更改 APP_LOCATION、API_LOCATION 和 APP_ARTIFACT_LOCATION、AZURE_STATIC_WEB_APPS_API_TOKEN 环境变量的值（如下）。
+#相关设置适当配置值的说明，请访问https://docs.microsoft.com/azure/static-web-apps/front-end-frameworks
+名称：将 Web 应用程序部署到 Azure 静态 Web 应用程序
+
+在：
+  推：
+: [    分支：[ “主要” ] “主要”      ]
+  拉请求：
+    types   : [类型：[打开、同步、重新打开、关闭]     ,同步,重新打开,关闭]
+    分支: [    分支：[ “主要” ] “主要”       ]
+
+# 此工作流程中所有作业和步骤可用的环境变量
+环境：
+  应用程序位置：“/” 应用程序位置：“/”     # 客户端代码的位置# 客户端代码的位置
+  API_LOCATION      : "api"          API_LOCATION ：“API”          # api 源代码的位置 - 可选# API 源代码的位置 - 可选
+  APP_ARTIFACT_LOCATION ：“构建” APP_ARTIFACT_LOCATION ：“构建”        # 客户端代码构建输出的位置
+AZURE_STATIC_WEB_APPS_API_TOKEN ： $ {       { Secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }       }       # 包含静态Web应用程序部署令牌的秘密{{ Secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }} # 包含静态Web应用程序部署令牌的秘密
+
+权限：
+  内容： 内容： 阅读
+
+工作：
+  构建和部署作业：
+    权限：
+      内容 :       内容：读取#进行操作/结账以获取代码#for actions/checkout 获取代码
+      拉取请求   :           Pull-requests：为 Azure/static-web-apps-deploy 写入#以对 PR 发表评论# for Azure/static-web-apps-deploy 对 PR 发表评论
+    if :       if : github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != '关闭' ) '推' || (github.event_name == 'pull_request' && github.event.action != '关闭' )
+    running-on   :     运行：ubuntu-latest
+    name    :     名称：构建和部署作业
+    脚步：
+      -使用:            - 使用：actions/checkout@v4
+        和：
+          子模块：true
+      -姓名   :          - 名称：构建和部署
+        身份证号 ：          身份证号：构建部署
+        使用： 使用：Azure/static-web-apps-deploy@v1
+        和：
+          azure_static_web_apps_api_token   :               azure_static_web_apps_api_token ： $ {      { env.AZURE_STATIC_WEB_APPS_API_TOKEN }      } 
+          回购令牌    ： $ {    { Secrets.GITHUB_TOKEN }   }   # 用于Github集成（即PR评论）
+          动作：“上传”
+          ###### 存储库/构建配置 - 可以配置这些值以满足您的应用程序要求。######
+          # 有关静态 Web 应用程序工作流配置的更多信息，请访问：https://aka.ms/swaworkflowconfig
+          应用程序位置： $ {  { env.APP_LOCATION }   }
+          api_location    : $ {     { env.API_LOCATION }     }
+          app_artifact_location     : $ {     { env.APP_ARTIFACT_LOCATION }    }
+          ###### 存储库/构建配置结束 ######
+
+  close_pull_request_job ：
+    权限：
+      内容：无
+    如果  : github.event_name == 'pull_request' && github.event.action == '关闭'
+    运行： ubuntu-latest
+    姓名：名称：关闭拉取请求作业
+    脚步：
+      - name  :          - 名称：关闭拉取请求
+        id    :             id :关闭拉请求
+        使用： 使用：Azure/static-web-apps-deploy@v1
+        和：
+          azure_static_web_apps_api_token ： azure_static_web_apps_api_token ： $ {  { env.AZURE_STATIC_WEB_APPS_API_TOKEN } } 
+          动作：“关闭”
